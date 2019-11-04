@@ -1,3 +1,5 @@
+
+#libs manejo de pines y tiempos
 import machine
 import time
 
@@ -61,7 +63,72 @@ class MMA8452(object):
             self.address=addrs[0]
         else:
             raise Exception('Address not right, should be 29 or 0x1d. It is ',addrs[0])
+
         self.active(1)
+
+    def getX():
+        pass
+
+    def getY():
+        pass
+
+    def getZ():
+        pass
+
+    def getCalculatedX():
+        pass
+
+    def getCalculatedY():
+        pass
+
+    def getCalculatedZ():
+        pass
+
+    def isRight():
+        pass
+
+    def isLeft():
+        pass
+
+    def isUp():
+        pass
+
+    def isDown():
+        pass
+
+    def isFlat():
+        pass
+
+    def setScale():
+        pass
+
+    def setDataRate():
+        pass
+
+    def standby():
+        pass
+
+    def isActive():
+        pass
+
+    def setupPL():
+        pass
+
+    def setupTap():
+        pass
+
+    def writeRegister():
+        pass
+
+    def writeRegisters():
+        pass
+
+    def readRegister():
+        pass
+
+    def readRegisters():
+        pass
+
 
 
     # metodos para cada eje
