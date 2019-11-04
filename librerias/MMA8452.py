@@ -47,12 +47,21 @@ OFF_X = 0x2F
 OFF_Y = 0x30
 OFF_Z = 0x31
 
+LOCKOUT = 0x40
+PORTRAIT_U = 0
+PORTRAIT_D = 1
+LANDSCAPE_R = 2
+LANDSCAPE_L = 3
+
 # objeto definido
 # hace falta todavia ciertos metodos
 class MMA8452(object):
 
     # scl y sda por default para esp32
     def __init__(self, scl=22, sda=23):
+
+        self.scale
+
         self.scl=scl
         self.sda=sda
         self.i2c=machine.I2C(scl=machine.Pin(scl), sda=machine.Pin(sda), freq=400000)
@@ -66,74 +75,97 @@ class MMA8452(object):
 
         self.active(1)
 
-    def getX():
+    def getX(self):
+        ret=self.readRegister(OUT_X_MSB,2)
+        return (ret[0]<<8 | ret[1]) >>4
+
+    def getY(self):
+        ret=self.readRegister(OUT_Y_MSB,2)
+        return (ret[0]<<8 | ret[1]) >>4
+
+    def getZ(self):
+        ret=self.readRegister(OUT_Z_MSB,2)
+        return (ret[0]<<8 | ret[1]) >>4
+
+    def getCalculatedX(self):
+        x=self.getX()
+        return x/(1 << 11)*self.scale
+
+    def getCalculatedY(self):
+        y=self.getY()
+        return y/(1 << 11)*self.scale
+
+    def getCalculatedZ(self):
+        z=self.getZ()
+        return z/(1 << 11)*self.scale
+
+    def isRight(self):
+        if (self.readPL() == LANDSCAPE_R):
+            return 1
+        return 0
+
+    def isLeft(self):
+        if (self.readPL() == LANDSCAPE_L):
+            return 1
+        return 0
+
+    def isUp(self):
+        if (self.readPL() == PORTRAIT_U):
+            return 1
+        return 0
+
+    def isDown(self):
+        if (self.readPL() == PORTRAIT_D):
+            return 1
+        return 0
+
+    def isFlat(self):
+        if (self.readPL() == LOCKOUT):
+            return 1
+        return 0
+
+    def setScale(self):
         pass
 
-    def getY():
+    def setDataRate(self):
         pass
 
-    def getZ():
+    def standby(self):
         pass
 
-    def getCalculatedX():
+    def isActive(self):
         pass
 
-    def getCalculatedY():
+    def readPL(self):
+        plStat=readRegister(PL_STATUS,1)
+        if (plStat & 0x40):
+            return LOCKOUT
+        else:
+            return (plStat & 0x6) >> 1
+
+    def setupPL(self):
         pass
 
-    def getCalculatedZ():
+    def setupTap(self):
         pass
 
-    def isRight():
+    def writeRegister(self, reg, value):
+        self.i2c.writeto_mem(self.address, reg, value)
+
+    def writeRegisters(self):
         pass
 
-    def isLeft():
-        pass
+    def readRegister(self, reg, buf):
+        return self.i2c.readfrom_mem(self.address, reg, buf)
 
-    def isUp():
-        pass
-
-    def isDown():
-        pass
-
-    def isFlat():
-        pass
-
-    def setScale():
-        pass
-
-    def setDataRate():
-        pass
-
-    def standby():
-        pass
-
-    def isActive():
-        pass
-
-    def setupPL():
-        pass
-
-    def setupTap():
-        pass
-
-    def writeRegister():
-        pass
-
-    def writeRegisters():
-        pass
-
-    def readRegister():
-        pass
-
-    def readRegisters():
+    def readRegisters(self):
         pass
 
 
 
     # metodos para cada eje
-    def get_acc(self):
-        ret=self.i2c.readfrom_mem(self.address,OUT_X_MSB,6)
+    def read(self):
+        ret=self.readRegister(OUT_X_MSB,6)
         time.sleep_ms(10)
         ret=list(ret)
         x=(ret[0]<<8 | ret[1]) >> 4
