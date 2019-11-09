@@ -75,7 +75,7 @@ class MMA8452(object):
         if addrs==0x2A:
             self.address=addrs
         else:
-            raise Exception('Address not right, should be 29 or 0x1d. It is ',addrs[0])
+            raise Exception('Address not right, should be 29 or 0x1d. It is ',addrs)
 
         self.set_scale(self.scale)
         self.setup_PL()
@@ -151,7 +151,13 @@ class MMA8452(object):
         self.write_register(CTRL_REG1,b'\x01')
 
     def is_active(self):
-        return self.read_register(SYSMOD,2)
+        ac = self.read_register(SYSMOD,2)
+        print(ac)
+        ac=list(ac)
+        print(ac)
+        if ac[0]==1 and ac[1]==1:
+            return True
+        return False
 
     def read_PL(self):
         plStat=read_register(PL_STATUS,1)
@@ -169,8 +175,29 @@ class MMA8452(object):
         self.active()
 
 
-    def setup_tap(self):
-        pass
+    def setup_tap(self, xThs, yThs, zThs):
+        if self.is_active():
+            self.standby()
+
+        temp=0
+        if !(xThs & 0x80):
+            temp |= 0x3
+            self.write_register(PULSE_THSX, byte([xThs]))
+
+        if !(yThs & 0x80):
+            temp |= 0xC
+            self.write_register(PULSE_THSY, byte([yThs]))
+
+        if !(zThs & 0x80):
+            temp |= 0x3
+            self.write_register(PULSE_THSZ, byte([zThs]))
+
+        self.write_register(PULSE_CFG, bytes([temp | 0x40]))
+        self.write_register(PULSE_TMLT, bytes([0x30]))
+        self.write_register(PULSE_LTCY, bytes([0xa0]))
+        self.write_register(PULSE_WIND, bytes([0xff]))
+
+        self.active()
 
     def write_register(self, reg, value):
         self.i2c.writeto_mem(self.address, reg, value)
