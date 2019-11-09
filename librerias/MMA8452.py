@@ -53,134 +53,140 @@ PORTRAIT_D = 1
 LANDSCAPE_R = 2
 LANDSCAPE_L = 3
 
+SCALE_2G = 2
+SCALE_4G = 4
+SCALE_8G = 8
+
 # objeto definido
 # hace falta todavia ciertos metodos
 class MMA8452(object):
 
     # scl y sda por default para esp32
-    def __init__(self, scl=22, sda=23):
+    def __init__(self,scale=SCALE_2G, scl=22, sda=23):
 
-        self.scale
+        self.scale = scale
 
         self.scl=scl
         self.sda=sda
         self.i2c=machine.I2C(scl=machine.Pin(scl), sda=machine.Pin(sda), freq=400000)
         self.address=None
         
-        addrs = self.i2c.scan()
-        if addrs[0]==0x1D:
-            self.address=addrs[0]
+        addrs = self.read_register(WHO_AM_I,1)
+        if addrs==0x2A:
+            self.address=addrs
         else:
             raise Exception('Address not right, should be 29 or 0x1d. It is ',addrs[0])
 
-        self.active(1)
+        self.set_scale(self.scale)
+        self.setup_PL()
+        self.setup_tap(0x80,0x80,0x80)
 
-    def getX(self):
-        ret=self.readRegister(OUT_X_MSB,2)
+        self.active()
+
+    def get_X(self):
+        ret=self.read_register(OUT_X_MSB,2)
         return (ret[0]<<8 | ret[1]) >>4
 
-    def getY(self):
-        ret=self.readRegister(OUT_Y_MSB,2)
+    def get_Y(self):
+        ret=self.read_register(OUT_Y_MSB,2)
         return (ret[0]<<8 | ret[1]) >>4
 
-    def getZ(self):
-        ret=self.readRegister(OUT_Z_MSB,2)
+    def get_Z(self):
+        ret=self.read_register(OUT_Z_MSB,2)
         return (ret[0]<<8 | ret[1]) >>4
 
-    def getCalculatedX(self):
-        x=self.getX()
+    def get_calculated_X(self):
+        x=self.get_X()
         return x/(1 << 11)*self.scale
 
-    def getCalculatedY(self):
-        y=self.getY()
+    def get_calculate_Y(self):
+        y=self.get_Y()
         return y/(1 << 11)*self.scale
 
-    def getCalculatedZ(self):
-        z=self.getZ()
+    def get_calculated_Z(self):
+        z=self.get_Z()
         return z/(1 << 11)*self.scale
 
-    def isRight(self):
-        if (self.readPL() == LANDSCAPE_R):
+    def is_right(self):
+        if (self.read_PL() == LANDSCAPE_R):
             return 1
         return 0
 
-    def isLeft(self):
-        if (self.readPL() == LANDSCAPE_L):
+    def is_left(self):
+        if (self.read_PL() == LANDSCAPE_L):
             return 1
         return 0
 
-    def isUp(self):
-        if (self.readPL() == PORTRAIT_U):
+    def is_up(self):
+        if (self.read_PL() == PORTRAIT_U):
             return 1
         return 0
 
-    def isDown(self):
-        if (self.readPL() == PORTRAIT_D):
+    def is_down(self):
+        if (self.read_PL() == PORTRAIT_D):
             return 1
         return 0
 
-    def isFlat(self):
-        if (self.readPL() == LOCKOUT):
+    def is_flat(self):
+        if (self.read_PL() == LOCKOUT):
             return 1
         return 0
 
-    def setScale(self):
-        pass
+    def set_scale(self, scale):
+        if self.is_active():
+            self.standby()
+        cfg=self.read_register(XYZ_DATA_CFG,1)
+        cfg &= 0xFC
+        cfg |=(scale <<2)
+        self.write_register(XYZ_DATA_CFG, bytes([cfg]))
+        self.active()
 
-    def setDataRate(self):
+    def set_data_rate(self):
         pass
 
     def standby(self):
-        pass
+        self.write_register(CTRL_REG1,b'\x00')
 
-    def isActive(self):
-        pass
+    def active(self):
+        self.write_register(CTRL_REG1,b'\x01')
 
-    def readPL(self):
-        plStat=readRegister(PL_STATUS,1)
+    def is_active(self):
+        return self.read_register(SYSMOD,2)
+
+    def read_PL(self):
+        plStat=read_register(PL_STATUS,1)
         if (plStat & 0x40):
             return LOCKOUT
         else:
             return (plStat & 0x6) >> 1
 
-    def setupPL(self):
+    def setup_PL(self):
+        if self.is_active():
+            self.standby()
+
+        self.write_register(PL_CFG, bytes([self.read_register(PL_CFG,1) | 0x40]))
+        self.write_register(PL_COUNT, b'\x50')
+        self.active()
+
+
+    def setup_tap(self):
         pass
 
-    def setupTap(self):
-        pass
-
-    def writeRegister(self, reg, value):
+    def write_register(self, reg, value):
         self.i2c.writeto_mem(self.address, reg, value)
 
-    def writeRegisters(self):
-        pass
-
-    def readRegister(self, reg, buf):
+    def read_register(self, reg, buf):
         return self.i2c.readfrom_mem(self.address, reg, buf)
-
-    def readRegisters(self):
-        pass
-
-
 
     # metodos para cada eje
     def read(self):
-        ret=self.readRegister(OUT_X_MSB,6)
+        ret=self.read_register(OUT_X_MSB,6)
         time.sleep_ms(10)
         ret=list(ret)
         x=(ret[0]<<8 | ret[1]) >> 4
         y=(ret[2]<<8 | ret[3]) >> 4
         z=(ret[4]<<8 | ret[5]) >> 4
         return [x,y,z]
-
-    # estado activo de acelerometro
-    def active(self, status):
-        time.sleep_ms(100)
-        if status==1:
-    		self.i2c.writeto_mem(self.address,CTRL_REG1,b'\x01')
-    	else:
-    		self.i2c.writeto_mem(self.address,CTRL_REG1,b'\x00')
-		time.sleep_ms(100)
 
 
 
