@@ -62,7 +62,7 @@ SCALE_8G = 8
 class MMA8452(object):
 
     # scl y sda por default para esp32
-    def __init__(self,scale=SCALE_2G, scl=22, sda=23):
+    def __init__(self,scale=SCALE_2G, scl=22, sda=23, device_address=29):
 
         self.scale = scale
 
@@ -75,7 +75,7 @@ class MMA8452(object):
         if addrs==0x2A:
             self.address=addrs
         else:
-            raise Exception('Address not right, should be 29 or 0x1d. It is ',addrs)
+            raise Exception('Required response should be b'*', it is ',str(addrs))
 
         self.set_scale(self.scale)
         self.setup_PL()
@@ -180,15 +180,15 @@ class MMA8452(object):
             self.standby()
 
         temp=0
-        if !(xThs & 0x80):
+        if xThs != 0x80:
             temp |= 0x3
             self.write_register(PULSE_THSX, byte([xThs]))
 
-        if !(yThs & 0x80):
+        if yThs != 0x80:
             temp |= 0xC
             self.write_register(PULSE_THSY, byte([yThs]))
 
-        if !(zThs & 0x80):
+        if zThs != 0x80:
             temp |= 0x3
             self.write_register(PULSE_THSZ, byte([zThs]))
 
